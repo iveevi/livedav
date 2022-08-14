@@ -1,0 +1,13 @@
+default_compiler: gcc
+
+builds:
+  - cava:
+    - sources: 'cava.c'
+
+
+targets:
+  - cava:
+    - builds:
+      - default: cava
+    - postbuilds:
+      - default: '{}'

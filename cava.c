@@ -174,10 +174,6 @@ int *monstercat_filter(int *bars, int number_of_bars, int waves, double monsterc
 
 // general: entry point
 int main(int argc, char **argv) {
-
-    // general: console title
-    printf("%c]0;%s%c", '\033', PACKAGE, '\007');
-
     // general: handle command-line arguments
     char configPath[PATH_MAX];
     configPath[0] = '\0';
@@ -190,47 +186,6 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGUSR1, &action, NULL);
     sigaction(SIGUSR2, &action, NULL);
-
-    char *usage = "\n\
-Usage : " PACKAGE " [options]\n\
-Visualize audio input in terminal. \n\
-\n\
-Options:\n\
-	-p          path to config file\n\
-	-v          print version\n\
-\n\
-Keys:\n\
-        Up        Increase sensitivity\n\
-        Down      Decrease sensitivity\n\
-        Left      Decrease number of bars\n\
-        Right     Increase number of bars\n\
-        r         Reload config\n\
-        c         Reload colors only\n\
-        f         Cycle foreground color\n\
-        b         Cycle background color\n\
-        q         Quit\n\
-\n\
-as of 0.4.0 all options are specified in config file, see in '/home/username/.config/cava/' \n";
-
-    int c;
-    while ((c = getopt(argc, argv, "p:vh")) != -1) {
-        switch (c) {
-        case 'p': // argument: fifo path
-            snprintf(configPath, sizeof(configPath), "%s", optarg);
-            break;
-        case 'h': // argument: print usage
-            printf("%s", usage);
-            return 1;
-        case '?': // argument: print usage
-            printf("%s", usage);
-            return 1;
-        case 'v': // argument: print version
-            printf(PACKAGE " " VERSION "\n");
-            return 0;
-        default: // argument: no arguments; exit
-            abort();
-        }
-    }
 
     // general: main loop
     while (1) {
@@ -247,44 +202,6 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
         int inAtty;
 
         output_mode = p.output;
-
-        if (output_mode != OUTPUT_RAW && output_mode != OUTPUT_NORITAKE) {
-            // Check if we're running in a tty
-            inAtty = 0;
-            if (strncmp(ttyname(0), "/dev/tty", 8) == 0 || strcmp(ttyname(0), "/dev/console") == 0)
-                inAtty = 1;
-
-            // in macos vitual terminals are called ttys(xyz) and there are no ttys
-            if (strncmp(ttyname(0), "/dev/ttys", 9) == 0)
-                inAtty = 0;
-            if (inAtty) {
-                // checking if cava psf font is installed in FONTDIR
-                FILE *font_file;
-                font_file = fopen(FONTDIR "/cava.psf", "r");
-                if (font_file) {
-                    fclose(font_file);
-                    system("setfont " FONTDIR "/cava.psf  >/dev/null 2>&1");
-                } else {
-                    // if not it might still be available, we dont know, must try
-                    system("setfont cava.psf  >/dev/null 2>&1");
-                }
-                system("setterm -blank 0");
-            }
-
-            // We use unicode block characters to draw the bars and
-            // the locale var LANG must be set to use unicode chars.
-            // For some reason this var can't be retrieved with
-            // setlocale(LANG, NULL), so we get it with getenv.
-            // Also we can't set it with setlocale(LANG "") so we
-            // must set LC_ALL instead.
-            // Attempting to set to en_US if not set, if that lang
-            // is not installed and LANG is not set there will be
-            // no output, for more info see #109 #344
-            if (!getenv("LANG"))
-                setlocale(LC_ALL, "en_US.utf8");
-            else
-                setlocale(LC_ALL, "");
-        }
 
         // input: init
 
@@ -316,89 +233,15 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
         struct timespec timeout_timer = {.tv_sec = 0, .tv_nsec = 1000000};
         int thr_id GCC_UNUSED;
 
-        switch (p.input) {
-#ifdef ALSA
-        case INPUT_ALSA:
-            // input_alsa: wait for the input to be ready
-            if (is_loop_device_for_sure(audio.source)) {
-                if (directory_exists("/sys/")) {
-                    if (!directory_exists("/sys/module/snd_aloop/")) {
-                        cleanup();
-                        fprintf(stderr,
-                                "Linux kernel module \"snd_aloop\" does not seem to  be loaded.\n"
-                                "Maybe run \"sudo modprobe snd_aloop\".\n");
-                        exit(EXIT_FAILURE);
-                    }
-                }
-            }
-
-            thr_id = pthread_create(&p_thread, NULL, input_alsa,
-                                    (void *)&audio); // starting alsamusic listener
-
-            timeout_counter = 0;
-
-            while (audio.format == -1 || audio.rate == 0) {
-                nanosleep(&timeout_timer, NULL);
-                timeout_counter++;
-                if (timeout_counter > 2000) {
-                    cleanup();
-                    fprintf(stderr, "could not get rate and/or format, problems with audio thread? "
-                                    "quiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            debug("got format: %d and rate %d\n", audio.format, audio.rate);
-            break;
-#endif
-        case INPUT_FIFO:
-            // starting fifomusic listener
-            thr_id = pthread_create(&p_thread, NULL, input_fifo, (void *)&audio);
-            audio.rate = p.fifoSample;
-            audio.format = p.fifoSampleBits;
-            break;
-#ifdef PULSE
-        case INPUT_PULSE:
+	{
             if (strcmp(audio.source, "auto") == 0) {
                 getPulseDefaultSink((void *)&audio);
             }
             // starting pulsemusic listener
             thr_id = pthread_create(&p_thread, NULL, input_pulse, (void *)&audio);
             audio.rate = 44100;
-            break;
-#endif
-#ifdef SNDIO
-        case INPUT_SNDIO:
-            thr_id = pthread_create(&p_thread, NULL, input_sndio, (void *)&audio);
-            audio.rate = 44100;
-            break;
-#endif
-        case INPUT_SHMEM:
-            thr_id = pthread_create(&p_thread, NULL, input_shmem, (void *)&audio);
-
-            timeout_counter = 0;
-            while (audio.rate == 0) {
-                nanosleep(&timeout_timer, NULL);
-                timeout_counter++;
-                if (timeout_counter > 2000) {
-                    cleanup();
-                    fprintf(stderr, "could not get rate and/or format, problems with audio thread? "
-                                    "quiting...\n");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            debug("got format: %d and rate %d\n", audio.format, audio.rate);
-            // audio.rate = 44100;
-            break;
-#ifdef PORTAUDIO
-        case INPUT_PORTAUDIO:
-            thr_id = pthread_create(&p_thread, NULL, input_portaudio, (void *)&audio);
-            audio.rate = 44100;
-            break;
-#endif
-        default:
-            exit(EXIT_FAILURE); // Can't happen.
-        }
-
+	}
+	
         if (p.upper_cut_off > audio.rate / 2) {
             cleanup();
             fprintf(stderr, "higher cuttoff frequency can't be higher than sample rate / 2");
@@ -413,14 +256,6 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
 
         int height, lines, width, remainder, fp;
 
-#ifdef SDL
-        // output: start sdl mode
-        if (output_mode == OUTPUT_SDL) {
-            init_sdl_window(p.sdl_width, p.sdl_height, p.sdl_x, p.sdl_y);
-            height = p.sdl_height;
-            width = p.sdl_width;
-        }
-#endif
 
         bool reloadConf = false;
         while (!reloadConf) { // jumping back to this loop means that you resized the screen
@@ -429,7 +264,7 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
             if (p.xaxis == FREQUENCY && p.bar_width < 4)
                 p.bar_width = 4;
 
-            switch (output_mode) {
+            switch (OUTPUT_RAW) {
 #ifdef NCURSES
             // output: start ncurses mode
             case OUTPUT_NCURSES:
@@ -461,7 +296,7 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
 
             case OUTPUT_RAW:
             case OUTPUT_NORITAKE:
-                if (strcmp(p.raw_target, "/dev/stdout") != 0) {
+                if (strcmp("/dev/stdout", "/dev/stdout") != 0) {
                     int fptest;
                     // checking if file exists
                     if (access(p.raw_target, F_OK) != -1) {
@@ -894,36 +729,12 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
                     fflush(stdout);
                 }
                 int rc;
-                switch (output_mode) {
-                case OUTPUT_NCURSES:
-#ifdef NCURSES
-                    rc = draw_terminal_ncurses(inAtty, lines, width, number_of_bars, p.bar_width,
-                                               p.bar_spacing, remainder, bars, previous_frame,
-                                               p.gradient, x_axis_info);
-                    break;
-#endif
-#ifdef SDL
-                case OUTPUT_SDL:
-                    rc = draw_sdl(number_of_bars, p.bar_width, p.bar_spacing, remainder, height,
-                                  bars, previous_frame, frame_time_msec);
-                    break;
-#endif
-                case OUTPUT_NONCURSES:
-                    rc = draw_terminal_noncurses(inAtty, lines, width, number_of_bars, p.bar_width,
-                                                 p.bar_spacing, remainder, bars, previous_frame,
-                                                 p.gradient, x_axis_info);
-                    break;
-                case OUTPUT_RAW:
+
+		{
                     rc = print_raw_out(number_of_bars, fp, p.raw_format, p.bit_format,
                                        p.ascii_range, p.bar_delim, p.frame_delim, bars);
-                    break;
-                case OUTPUT_NORITAKE:
-                    rc = print_ntk_out(number_of_bars, fp, p.bit_format, p.bar_width, p.bar_spacing,
-                                       p.bar_height, bars);
-                    break;
-                default:
-                    exit(EXIT_FAILURE); // Can't happen.
-                }
+		}
+
                 if (p.sync_updates) {
                     printf("\033P=2s\033\\");
                     fflush(stdout);

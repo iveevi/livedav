@@ -14,7 +14,7 @@
 static void initialize_audio_parameters(snd_pcm_t **handle, struct audio_data *audio,
                                         snd_pcm_uframes_t *frames) {
     // alsa: open device to capture audio
-    int err = snd_pcm_open(handle, audio->source, SND_PCM_STREAM_CAPTURE, 0);
+    int err = snd_pcm_open(handle, "pulse", SND_PCM_STREAM_CAPTURE, 0);
     if (err < 0) {
         fprintf(stderr, "error opening stream: %s\n", snd_strerror(err));
         exit(EXIT_FAILURE);
@@ -155,8 +155,22 @@ void *input_alsa(void *data) {
             debug("short read, read %d %d frames\n", err, (int)frames);
         }
 
+	// writing to file (clear)
+	    FILE *file = fopen("test.raw", "wb");
+	    if (file == NULL) {
+		printf("Error opening file!\n");
+		exit(1);
+	    }
+
+	for (uint16_t i = 0; i < 10; i++) {
+		fprintf(file, "%d ", buf[i]);
+	}
+	fprintf(file, "\n");
+    	fclose(file);
+
         write_to_cava_input_buffers(frames * CHANNELS_COUNT, buf, data);
     }
+
 
     free(buffer);
     snd_pcm_close(handle);
