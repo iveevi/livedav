@@ -357,13 +357,3 @@ int draw_terminal_noncurses(int tty, int lines, int width, int number_of_bars, i
     }
     return 0;
 }
-
-void cleanup_terminal_noncurses(void) {
-    setecho(STDIN_FILENO, 1);
-    printf("\033[0m\n");
-    system("setfont  >/dev/null 2>&1");
-    system("setfont /usr/share/consolefonts/Lat2-Fixed16.psf.gz  >/dev/null 2>&1");
-    system("setterm -cursor on");
-    system("setterm -blank 10");
-    system("clear");
-}

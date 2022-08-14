@@ -1,7 +1,9 @@
 #include "cavacore.h"
+
 #ifndef M_PI
 #define M_PI 3.1415926535897932385
 #endif
+
 #include <fftw3.h>
 #include <math.h>
 #include <stdlib.h>
@@ -9,7 +11,7 @@
 
 struct cava_plan *cava_init(int number_of_bars, unsigned int rate, int channels, int autosens,
                             double noise_reduction, int low_cut_off, int high_cut_off) {
-    struct cava_plan *p = malloc(sizeof(struct cava_plan));
+    cava_plan *p = new cava_plan;
     p->status = 0;
 
     // sanity checks:

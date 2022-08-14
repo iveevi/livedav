@@ -1,4 +1,4 @@
-default_compiler: gcc
+default_compiler: clang++
 
 builds:
   - cava:

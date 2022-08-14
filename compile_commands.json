@@ -1,0 +1,37 @@
+[
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/cava.o cava.c  -I .",
+  "file": "cava.c"
+},
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/cavacore.o cavacore.c  -I .",
+  "file": "cavacore.c"
+},
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/config.o config.c  -I .",
+  "file": "config.c"
+},
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/input_pulse.o input/pulse.c  -I .",
+  "file": "input/pulse.c"
+},
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/input_common.o input/common.c  -I .",
+  "file": "input/common.c"
+},
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/output_terminal_noncurses.o output/terminal_noncurses.c  -I .",
+  "file": "output/terminal_noncurses.c"
+},
+{
+  "directory": "/home/venki/sources/cava",
+  "command": "clang++ -DPACKAGE=\"cava\" -DNDEBUG -DPULSE -c -o .smake/builds/cava/output_raw.o output/raw.c  -I .",
+  "file": "output/raw.c"
+}
+]
