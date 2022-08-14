@@ -2,8 +2,16 @@ default_compiler: gcc
 
 builds:
   - cava:
-    - sources: 'cava.c'
-
+    - sources: 'cava.c,
+      cavacore.c,
+      config.c,
+      input/pulse.c,
+      input/common.c,
+      output/terminal_noncurses.c,
+      output/raw.c'
+    - libraries: 'm, fftw3, pulse, pulse-simple, pthread, iniparser, ncurses'
+    - idirs: '.'
+    - flags: '-DPACKAGE=\"cava\" -DNDEBUG -DPULSE'
 
 targets:
   - cava:

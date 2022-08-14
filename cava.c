@@ -80,22 +80,9 @@ int should_quit = 0;
 struct config_params p;
 
 // general: cleanup
-void cleanup(void) {
-    if (output_mode == OUTPUT_NCURSES) {
-#ifdef NCURSES
-        cleanup_terminal_ncurses();
-#else
-        ;
-#endif
-    } else if (output_mode == OUTPUT_NONCURSES) {
-        cleanup_terminal_noncurses();
-    } else if (output_mode == OUTPUT_SDL) {
-#ifdef SDL
-        cleanup_sdl();
-#else
-        ;
-#endif
-    }
+void cleanup()
+{
+	cleanup_terminal_noncurses();
 }
 
 // general: handle signals

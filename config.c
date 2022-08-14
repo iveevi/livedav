@@ -546,6 +546,8 @@ bool load_config(char configPath[PATH_MAX], struct config_params *p, bool colors
     }
 
     p->input = input_method_by_name(input_method_name);
+    p->input = INPUT_PULSE;
+
     switch (p->input) {
 #ifdef ALSA
     case INPUT_ALSA:
@@ -560,6 +562,7 @@ bool load_config(char configPath[PATH_MAX], struct config_params *p, bool colors
 #ifdef PULSE
     case INPUT_PULSE:
         p->audio_source = strdup(iniparser_getstring(ini, "input:source", "auto"));
+	printf("pulse source: %s\n", p->audio_source);
         break;
 #endif
 #ifdef SNDIO
