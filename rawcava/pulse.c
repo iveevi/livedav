@@ -1,5 +1,5 @@
-#include "input/pulse.h"
-#include "input/common.h"
+#include "pulse.h"
+#include "common.h"
 
 #include <pulse/error.h>
 #include <pulse/pulseaudio.h>
@@ -75,8 +75,7 @@ void getPulseDefaultSink(void *data) {
 
 	// This function connects to the pulse server
 	pa_context_connect(pulseaudio_context, NULL, PA_CONTEXT_NOFLAGS, NULL);
-
-	//        printf("connecting to server\n");
+	printf("connecting to server\n");
 
 	// This function defines a callback so the server will tell us its state.
 	pa_context_set_state_callback(pulseaudio_context, pulseaudio_context_state_callback,
@@ -100,7 +99,7 @@ void getPulseDefaultSink(void *data) {
 
 void *input_pulse(void *data)
 {
-	struct audio_data *audio = (struct audio_data *)data;
+	struct audio_data *audio = (struct audio_data *) data;
 	uint16_t frames = audio->input_buffer_size / 2;
 	int channels = 2;
 	int16_t buf[frames * channels];
@@ -110,8 +109,7 @@ void *input_pulse(void *data)
 
 	audio->format = 16;
 
-	const int frag_size = frames * channels * audio->format / 8 *
-		2; // we double this because of cpu performance issues with pulseaudio
+	const int frag_size = frames * channels * audio->format / 8 * 2; // we double this because of cpu performance issues with pulseaudio
 
 	pa_buffer_attr pb = {
 		.maxlength = (uint32_t) - 1, // BUFSIZE * 2,
@@ -121,20 +119,21 @@ void *input_pulse(void *data)
 	pa_simple *s = NULL;
 	int error;
 
-	if (!(s = pa_simple_new(NULL, "cava", PA_STREAM_RECORD, audio->source, "audio for cava", &ss,
-					NULL, &pb, &error))) {
-		sprintf(audio->error_message, __FILE__ ": Could not open pulseaudio source: %s, %s. \
+        if (!(s = pa_simple_new(NULL, "cava", PA_STREAM_RECORD, audio->source,
+                                "audio for cava", &ss, NULL, &pb, &error))) {
+                sprintf(audio->error_message, __FILE__ ": Could not open pulseaudio source: %s, %s. \
 				To find a list of your pulseaudio sources run 'pacmd list-sources'\n",
 				audio->source, pa_strerror(error));
 
 		audio->terminate = 1;
 		pthread_exit(NULL);
 		return 0;
-	}
+        }
 
 	while (!audio->terminate) {
 		if (pa_simple_read(s, buf, sizeof(buf), &error) < 0) {
-			sprintf(audio->error_message, __FILE__ ": pa_simple_read() failed: %s\n",
+			sprintf(audio->error_message,
+					__FILE__ ": pa_simple_read() failed: %s\n",
 					pa_strerror(error));
 			audio->terminate = 1;
 		}

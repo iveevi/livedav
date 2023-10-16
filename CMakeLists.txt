@@ -4,20 +4,13 @@ project(rawcava C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(rawcava
-	cava.c
-	cavacore.c
-	config.c
-	input/pulse.c
-	input/common.c
-	output/raw.c
-)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused")
+
+file(GLOB_RECURSE SOURCES "rawcava/*.c")
+add_executable(rawcava ${SOURCES})
+
+target_compile_definitions(rawcava PRIVATE PACKAGE="rawcava")
 
 include_directories(${PROJECT_SOURCE_DIR})
 
-# Macro
-target_compile_definitions(rawcava PRIVATE PACKAGE="rawcava")
-
-target_link_libraries(rawcava PRIVATE
-	m pthread fftw3 pulse pulse-simple iniparser
-)
+target_link_libraries(rawcava PRIVATE m pthread fftw3 pulse pulse-simple)
