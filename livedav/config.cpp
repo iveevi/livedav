@@ -1,5 +1,5 @@
-#include "config.h"
-#include "util.h"
+#include "config.hpp"
+#include "util.hpp"
 
 #include <ctype.h>
 #include <math.h>

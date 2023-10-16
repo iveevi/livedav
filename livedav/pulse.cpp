@@ -1,5 +1,5 @@
-#include "pulse.h"
-#include "common.h"
+#include "pulse.hpp"
+#include "common.hpp"
 
 #include <pulse/error.h>
 #include <pulse/pulseaudio.h>

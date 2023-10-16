@@ -19,11 +19,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "cavacore.h"
-#include "config.h"
-#include "common.h"
-#include "pulse.h"
-#include "util.h"
+#include "cavacore.hpp"
+#include "config.hpp"
+#include "common.hpp"
+#include "pulse.hpp"
+#include "util.hpp"
 
 // these variables are used only in main, but making them global
 // will allow us to not free them on exit without ASan complaining

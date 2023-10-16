@@ -1,9 +1,9 @@
-#include "common.h"
+#include "common.hpp"
 
 #include <math.h>
 #include <string.h>
 
-int write_to_cava_input_buffers(int16_t size, int16_t buf[size], void *data)
+int write_to_cava_input_buffers(int16_t size, int16_t *buf, void *data)
 {
 	if (size == 0)
 		return 0;
