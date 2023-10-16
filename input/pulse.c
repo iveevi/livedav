@@ -11,10 +11,10 @@ void cb(__attribute__((unused)) pa_context *pulseaudio_context, const pa_server_
 		void *userdata) {
 
 	// getting default sink name
-	struct audio_data *audio = (struct audio_data *)userdata;
+	struct audio_data *audio = (struct audio_data *) userdata;
 	pthread_mutex_lock(&audio->lock);
 	free(audio->source);
-	audio->source = new char[1024];
+	audio->source = (char *) malloc(1024 * sizeof(char));
 
 	strcpy(audio->source, i->default_sink_name);
 
@@ -115,7 +115,7 @@ void *input_pulse(void *data)
 
 	pa_buffer_attr pb = {
 		.maxlength = (uint32_t) - 1, // BUFSIZE * 2,
-		.fragsize = static_cast <uint32_t> (frag_size)
+		.fragsize = frag_size,
 	};
 
 	pa_simple *s = NULL;

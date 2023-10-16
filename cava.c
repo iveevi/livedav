@@ -29,22 +29,11 @@
 #include <unistd.h>
 
 #include "cavacore.h"
-
 #include "config.h"
-
-#include "util.h"
-
-#include "output/noritake.h"
-#include "output/raw.h"
-#include "output/terminal_noncurses.h"
-
-#include "input/alsa.h"
 #include "input/common.h"
-#include "input/fifo.h"
-#include "input/portaudio.h"
 #include "input/pulse.h"
-#include "input/shmem.h"
-#include "input/sndio.h"
+#include "output/raw.h"
+#include "util.h"
 
 #ifdef __GNUC__
 // curses.h or other sources may already define
@@ -67,23 +56,6 @@ int should_quit = 0;
 // these variables are used only in main, but making them global
 // will allow us to not free them on exit without ASan complaining
 struct config_params p;
-
-#ifdef ALSA
-static bool is_loop_device_for_sure(const char *text) {
-	const char *const LOOPBACK_DEVICE_PREFIX = "hw:Loopback,";
-	return strncmp(text, LOOPBACK_DEVICE_PREFIX, strlen(LOOPBACK_DEVICE_PREFIX)) == 0;
-}
-
-static bool directory_exists(const char *path) {
-	DIR *const dir = opendir(path);
-	if (dir == NULL)
-		return false;
-
-	closedir(dir);
-	return true;
-}
-
-#endif
 
 int *monstercat_filter(int *bars, int number_of_bars, int waves, double monstercat) {
 
@@ -123,6 +95,7 @@ int *monstercat_filter(int *bars, int number_of_bars, int waves, double monsterc
 }
 
 // general: entry point
+// TODO: create a library module, then use this main function as an example
 int main(int argc, char **argv)
 {
 	// general: handle command-line arguments
@@ -144,11 +117,10 @@ int main(int argc, char **argv)
 		output_mode = p.output;
 
 		// input: init
-
 		struct audio_data audio;
 		memset(&audio, 0, sizeof(audio));
 
-		audio.source = new char[strlen(p.audio_source)];
+		audio.source = (char *) malloc(strlen(p.audio_source) + 1);
 		strcpy(audio.source, p.audio_source);
 
 		audio.format = -1;
@@ -201,80 +173,45 @@ int main(int argc, char **argv)
 			if (p.xaxis == FREQUENCY && p.bar_width < 4)
 				p.bar_width = 4;
 
-			switch (OUTPUT_RAW) {
-#ifdef NCURSES
-				// output: start ncurses mode
-				case OUTPUT_NCURSES:
-					init_terminal_ncurses(p.color, p.bcolor, p.col, p.bgcol, p.gradient,
-							p.gradient_count, p.gradient_colors, &width, &lines);
-					if (p.xaxis != NONE)
-						lines--;
-					// we have 8 times as much height due to using 1/8 block characters
-					height = lines * 8;
-					break;
-#endif
-#ifdef SDL
-					// output: get sdl window size
-				case OUTPUT_SDL:
-					init_sdl_surface(&width, &height, p.color, p.bcolor);
-					break;
-#endif
-				case OUTPUT_NONCURSES:
-					get_terminal_dim_noncurses(&width, &lines);
+			// Raw input handling
+			if (strcmp("/dev/stdout", "/dev/stdout") != 0) {
+				int fptest;
+				// checking if file exists
+				if (access(p.raw_target, F_OK) != -1) {
+					// file exists, testopening in case it's a fifo
+					fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
 
-					if (p.xaxis != NONE)
-						lines--;
-
-					init_terminal_noncurses(inAtty, p.color, p.bcolor, p.col, p.bgcol, p.gradient,
-							p.gradient_count, p.gradient_colors, width, lines,
-							p.bar_width);
-					height = lines * 8;
-					break;
-
-				case OUTPUT_RAW:
-				case OUTPUT_NORITAKE:
-					if (strcmp("/dev/stdout", "/dev/stdout") != 0) {
-						int fptest;
-						// checking if file exists
-						if (access(p.raw_target, F_OK) != -1) {
-							// file exists, testopening in case it's a fifo
-							fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
-
-							if (fptest == -1) {
-								fprintf(stderr, "could not open file %s for writing\n", p.raw_target);
-								exit(1);
-							}
-						} else {
-							printf("creating fifo %s\n", p.raw_target);
-							if (mkfifo(p.raw_target, 0664) == -1) {
-								fprintf(stderr, "could not create fifo %s\n", p.raw_target);
-								exit(1);
-							}
-							// fifo needs to be open for reading in order to write to it
-							fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
-						}
-						fp = open(p.raw_target, O_WRONLY | O_NONBLOCK | O_CREAT, 0644);
-					} else {
-						fp = fileno(stdout);
-					}
-					if (fp == -1) {
+					if (fptest == -1) {
 						fprintf(stderr, "could not open file %s for writing\n", p.raw_target);
 						exit(1);
 					}
-
-					// width must be hardcoded for raw output.
-					width = 512;
-
-					if (strcmp(p.data_format, "ascii") != 0) {
-						// "binary" or "noritake"
-						height = pow(2, p.bit_format) - 1;
-					} else {
-						height = p.ascii_range;
+				} else {
+					printf("creating fifo %s\n", p.raw_target);
+					if (mkfifo(p.raw_target, 0664) == -1) {
+						fprintf(stderr, "could not create fifo %s\n", p.raw_target);
+						exit(1);
 					}
-					break;
+					// fifo needs to be open for reading in order to write to it
+					fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
+				}
+				fp = open(p.raw_target, O_WRONLY | O_NONBLOCK | O_CREAT, 0644);
+			} else {
+				fp = fileno(stdout);
+			}
 
-				default:
-					exit(EXIT_FAILURE); // Can't happen.
+			if (fp == -1) {
+				fprintf(stderr, "could not open file %s for writing\n", p.raw_target);
+				exit(1);
+			}
+
+			// width must be hardcoded for raw output.
+			width = 512;
+
+			if (strcmp(p.data_format, "ascii") != 0) {
+				// "binary" or "noritake"
+				height = pow(2, p.bit_format) - 1;
+			} else {
+				height = p.ascii_range;
 			}
 
 			// handle for user setting too many bars
@@ -296,6 +233,7 @@ int main(int argc, char **argv)
 					number_of_bars = 2; // stereo have at least 2 bars
 				}
 			}
+
 			if (number_of_bars > 512)
 				number_of_bars = 512; // cant have more than 512 bars on 44100 rate
 
@@ -415,62 +353,7 @@ int main(int argc, char **argv)
 			int total_frames = 0;
 
 			while (!resizeTerminal) {
-
-				// general: keyboard controls
-#ifdef NCURSES
-				if (output_mode == OUTPUT_NCURSES)
-					ch = getch();
-#endif
-				/*
-				// disabled key controls in non-curses mode, caused garbage on screen
-				if (output_mode == OUTPUT_NONCURSES)
-				ch = fgetc(stdin);
-				*/
-
-				switch (ch) {
-					case 65: // key up
-						p.sens = p.sens * 1.05;
-						break;
-					case 66: // key down
-						p.sens = p.sens * 0.95;
-						break;
-					case 68: // key right
-						p.bar_width++;
-						resizeTerminal = true;
-						break;
-					case 67: // key left
-						if (p.bar_width > 1)
-							p.bar_width--;
-						resizeTerminal = true;
-						break;
-					case 'r': // reload config
-						should_reload = 1;
-						break;
-					case 'c': // reload colors
-						reload_colors = 1;
-						break;
-					case 'f': // change forground color
-						if (p.col < 7)
-							p.col++;
-						else
-							p.col = 0;
-						resizeTerminal = true;
-						break;
-					case 'b': // change backround color
-						if (p.bgcol < 7)
-							p.bgcol++;
-						else
-							p.bgcol = 0;
-						resizeTerminal = true;
-						break;
-
-					case 'q':
-						should_reload = 1;
-						should_quit = 1;
-				}
-
 				if (should_reload) {
-
 					reloadConf = true;
 					resizeTerminal = true;
 					should_reload = 0;
@@ -486,11 +369,6 @@ int main(int argc, char **argv)
 					resizeTerminal = true;
 					reload_colors = 0;
 				}
-
-#ifndef NDEBUG
-				// clear();
-				refresh();
-#endif
 
 				// process: check if input is present
 				silence = true;
@@ -520,6 +398,7 @@ int main(int argc, char **argv)
 				}
 
 				// process: execute cava
+				// TODO: openmp parallelize?
 				pthread_mutex_lock(&audio.lock);
 				cava_execute(audio.cava_in, audio.samples_counter, cava_out, plan);
 				if (audio.samples_counter > 0) {

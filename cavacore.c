@@ -11,7 +11,8 @@
 
 struct cava_plan *cava_init(int number_of_bars, unsigned int rate, int channels, int autosens,
                             double noise_reduction, int low_cut_off, int high_cut_off) {
-    cava_plan *p = new cava_plan;
+    // struct cava_plan *p = new cava_plan;
+    struct cava_plan *p = (struct cava_plan *) malloc(sizeof(struct cava_plan));
     p->status = 0;
 
     // sanity checks:
